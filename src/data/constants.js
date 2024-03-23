@@ -8,7 +8,7 @@ export const Bio = {
     "Je suis un développeur web passionné, animé par la volonté d'apprendre et de contribuer dans le monde du développement web. Mon parcours m'a permis de maîtriser les langages fondamentaux tels que HTML, CSS et JavaScript, ainsi que d'acquérir une solide compréhension des frameworks comme React.js et des bases de données telles que SQL et MongoDB.",
   github: "https://github.com/alexClmls",
   resume:
-    "https://drive.google.com/file/d/10x7jPxGcwhNr8UhAMrzWuu62eL1ZiOpo/view?usp=drive_link",
+    "https://drive.google.com/file/d/1O4lpRJUm86DTVA0hLB0GPnBdFziYhg0S/view?usp=sharing",
   linkedin: "https://www.linkedin.com/in/alexandre-calmels-248b8b190/",
   twitter: "https://twitter.com/alexandrecalme4",
 };
