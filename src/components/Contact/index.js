@@ -1,7 +1,5 @@
-import React from 'react'
+import React, { useRef, useState } from 'react';
 import styled from 'styled-components'
-import { useRef } from 'react';
-import emailjs from '@emailjs/browser';
 import { Snackbar } from '@mui/material';
 
 const Container = styled.div`
@@ -120,49 +118,58 @@ const ContactButton = styled.input`
   font-weight: 600;
 `
 
-
-
 const Contact = () => {
-
-  //hooks
-  const [open, setOpen] = React.useState(false);
+  const [open, setOpen] = useState(false);
   const form = useRef();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    emailjs.sendForm('service_43wvdd5', 'template_0g3dc46', form.current, 'zf4w6OJa3eJSJq6p0')
-      .then((result) => {
-        setOpen(true);
-        form.current.reset();
-      }, (error) => {
-        console.log(error.text);
+
+    const data = {
+      from_name: form.current.from_name.value,
+      from_email: form.current.from_email.value,
+      subject: form.current.subject.value,
+      message: form.current.message.value
+    };
+
+    try {
+      await fetch("https://hook.eu2.make.com/w9aghbw6yfrr8im3ysq4vzf78hffiw6p", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(data)
       });
-  }
 
-
+      setOpen(true);
+      form.current.reset();
+    } catch (error) {
+      console.error("Erreur d'envoi :", error);
+    }
+  };
 
   return (
     <Container>
       <Wrapper>
         <Title>Contact</Title>
         <ContactForm ref={form} onSubmit={handleSubmit}>
-          <ContactTitle>Contactez moi 🚀</ContactTitle>
+          <ContactTitle>Contactez-moi 🚀</ContactTitle>
           <ContactInput placeholder="Votre Email" name="from_email" />
           <ContactInput placeholder="Votre Nom" name="from_name" />
           <ContactInput placeholder="Sujet" name="subject" />
           <ContactInputMessage placeholder="Message" rows="4" name="message" />
-          <ContactButton type="submit" value="Envoi" />
+          <ContactButton type="submit" value="Envoyer" />
         </ContactForm>
+
         <Snackbar
           open={open}
-          autoHideDuration={6000}
-          onClose={()=>setOpen(false)}
-          message="Email envoyé!"
-          severity="success"
+          autoHideDuration={5000}
+          onClose={() => setOpen(false)}
+          message="Message envoyé via Make ✅"
         />
       </Wrapper>
     </Container>
-  )
-}
+  );
+};
 
-export default Contact
+export default Contact;
