@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import styled from 'styled-components'
-import { Snackbar } from '@mui/material';
+import { Snackbar, Alert } from '@mui/material';
 
 const Container = styled.div`
 display: flex;
@@ -116,11 +116,106 @@ const ContactButton = styled.input`
   color: ${({ theme }) => theme.text_primary};
   font-size: 18px;
   font-weight: 600;
+  cursor: pointer;
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
 `
 
+const ErrorText = styled.span`
+  color: #ff6b6b;
+  font-size: 13px;
+  margin-top: -6px;
+  margin-left: 4px;
+`
+
+const SuccessBanner = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%);
+  color: white;
+  padding: 14px 18px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  box-shadow: 0 6px 24px rgba(34, 197, 94, 0.45);
+  margin-bottom: 4px;
+  animation: slideDown 0.4s ease-out;
+
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+`
+
+const SuccessIcon = styled.span`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  font-size: 16px;
+`
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const validateField = (name, value) => {
+  const v = (value || "").trim();
+  switch (name) {
+    case "from_email":
+      if (!v) return "L'email est obligatoire.";
+      if (!EMAIL_REGEX.test(v)) return "Format d'email invalide.";
+      return "";
+    case "from_name":
+      if (!v) return "Le nom est obligatoire.";
+      if (v.length < 2) return "Le nom doit contenir au moins 2 caractères.";
+      return "";
+    case "subject":
+      if (!v) return "Le sujet est obligatoire.";
+      if (v.length < 3) return "Le sujet doit contenir au moins 3 caractères.";
+      return "";
+    case "message":
+      if (!v) return "Le message est obligatoire.";
+      if (v.length < 5) return "Le message doit contenir au moins 5 caractères.";
+      if (v.length > 1000) return "Le message ne peut pas dépasser 1000 caractères.";
+      return "";
+    default:
+      return "";
+  }
+};
+
 const Contact = () => {
-  const [open, setOpen] = useState(false);
   const form = useRef();
+  const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [snackbar, setSnackbar] = useState({ open: false, severity: "success", message: "" });
+
+  const showSnackbar = (severity, message) =>
+    setSnackbar({ open: true, severity, message });
+
+  const handleBlur = (e) => {
+    const { name, value } = e.target;
+    setErrors((prev) => ({ ...prev, [name]: validateField(name, value) }));
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    if (errors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: validateField(name, value) }));
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -129,22 +224,50 @@ const Contact = () => {
       from_name: form.current.from_name.value,
       from_email: form.current.from_email.value,
       subject: form.current.subject.value,
-      message: form.current.message.value
+      message: form.current.message.value,
     };
 
-    try {
-      await fetch("https://hook.eu2.make.com/w9aghbw6yfrr8im3ysq4vzf78hffiw6p", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(data)
-      });
+    const newErrors = Object.keys(data).reduce((acc, key) => {
+      const err = validateField(key, data[key]);
+      if (err) acc[key] = err;
+      return acc;
+    }, {});
 
-      setOpen(true);
+    setErrors(newErrors);
+
+    if (Object.keys(newErrors).length > 0) {
+      showSnackbar("error", "Merci de corriger les champs en erreur.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch(
+        "https://hook.eu2.make.com/w9aghbw6yfrr8im3ysq4vzf78hffiw6p",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Erreur serveur (${response.status})`);
+      }
+
+      showSnackbar("success", "Message envoyé avec succès ✅");
       form.current.reset();
+      setErrors({});
+      setSubmitted(true);
+      setTimeout(() => setSubmitted(false), 6000);
     } catch (error) {
       console.error("Erreur d'envoi :", error);
+      showSnackbar(
+        "error",
+        "Échec de l'envoi du message. Veuillez réessayer plus tard."
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -152,21 +275,79 @@ const Contact = () => {
     <Container>
       <Wrapper>
         <Title>Contact</Title>
-        <ContactForm ref={form} onSubmit={handleSubmit}>
+        <ContactForm ref={form} onSubmit={handleSubmit} noValidate>
           <ContactTitle>Contactez-moi 🚀</ContactTitle>
-          <ContactInput placeholder="Votre Email" name="from_email" />
-          <ContactInput placeholder="Votre Nom" name="from_name" />
-          <ContactInput placeholder="Sujet" name="subject" />
-          <ContactInputMessage placeholder="Message" rows="4" name="message" />
-          <ContactButton type="submit" value="Envoyer" />
+
+          {submitted && (
+            <SuccessBanner role="status" aria-live="polite">
+              <SuccessIcon>✓</SuccessIcon>
+              Message envoyé avec succès ! Je vous répondrai au plus vite.
+            </SuccessBanner>
+          )}
+
+          <ContactInput
+            placeholder="Votre Email"
+            name="from_email"
+            type="email"
+            onBlur={handleBlur}
+            onChange={handleChange}
+          />
+          {errors.from_email && <ErrorText>{errors.from_email}</ErrorText>}
+
+          <ContactInput
+            placeholder="Votre Nom"
+            name="from_name"
+            onBlur={handleBlur}
+            onChange={handleChange}
+          />
+          {errors.from_name && <ErrorText>{errors.from_name}</ErrorText>}
+
+          <ContactInput
+            placeholder="Sujet"
+            name="subject"
+            onBlur={handleBlur}
+            onChange={handleChange}
+          />
+          {errors.subject && <ErrorText>{errors.subject}</ErrorText>}
+
+          <ContactInputMessage
+            placeholder="Message"
+            rows="4"
+            name="message"
+            onBlur={handleBlur}
+            onChange={handleChange}
+          />
+          {errors.message && <ErrorText>{errors.message}</ErrorText>}
+
+          <ContactButton
+            type="submit"
+            value={loading ? "Envoi en cours..." : "Envoyer"}
+            disabled={loading}
+          />
         </ContactForm>
 
         <Snackbar
-          open={open}
-          autoHideDuration={5000}
-          onClose={() => setOpen(false)}
-          message="Message envoyé via Make ✅"
-        />
+          open={snackbar.open}
+          autoHideDuration={6000}
+          onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+          anchorOrigin={{ vertical: "top", horizontal: "center" }}
+        >
+          <Alert
+            onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+            severity={snackbar.severity}
+            variant="filled"
+            sx={{
+              width: "100%",
+              minWidth: "320px",
+              fontSize: "16px",
+              fontWeight: 600,
+              alignItems: "center",
+              boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3)",
+            }}
+          >
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
       </Wrapper>
     </Container>
   );
